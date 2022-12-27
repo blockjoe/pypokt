@@ -27,7 +27,7 @@ setup(
         "pycryptodome>=3.14.1",
         "tabulate>=0.8.9",
         "duckdb>=0.3.4",
-        "pyarrow>=7.0.0",
+        "pyarrow>=10.0.0",
         "aiohttp[speedups]>=3.8.1",
         "qrcode>=7.3.1",
         "Pillow>=9.1.0",

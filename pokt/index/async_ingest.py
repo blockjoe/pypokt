@@ -183,7 +183,9 @@ def _append_msg_tables(msgs_dir, tables, start_block, end_block):
 def _parquet_append(parquet_dir, table, start_block, end_block):
     basename = "block_{}-{}".format(start_block, end_block) + "-{i}.parquet"
     pq.write_to_dataset(
-        table, parquet_dir, basename_template=basename, use_legacy_dataset=False
+        table,
+        parquet_dir,
+        basename_template=basename,
     )
 
 
@@ -227,7 +229,7 @@ async def async_ingest_block_range(
     batch_size=1000,
     session: Optional[aiohttp.ClientSession] = None,
     progress_queue: Optional[QueueT] = None,
-) -> QueueT:
+) -> Optional[QueueT]:
     if session is None:  # Just pipe back into this with a session
         async with aiohttp.ClientSession("http://httpbin.org") as session:
             return await async_ingest_block_range(
@@ -291,4 +293,4 @@ async def async_ingest_block_range(
     if progress_queue:
         progress_queue.put(("block", len(headers)))
         progress_queue.put(("txs", len(txs)))
-    return queue
+    return progress_queue

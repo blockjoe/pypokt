@@ -182,7 +182,9 @@ def _append_msg_tables(msgs_dir, tables, start_block, end_block):
 def _parquet_append(parquet_dir, table, start_block, end_block):
     basename = "block_{}-{}".format(start_block, end_block) + "-{i}.parquet"
     pq.write_to_dataset(
-        table, parquet_dir, basename_template=basename, use_legacy_dataset=False
+        table,
+        parquet_dir,
+        basename_template=basename,
     )
 
 
