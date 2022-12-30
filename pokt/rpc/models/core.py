@@ -14,7 +14,7 @@ TxResultMessageTypes = Literal[
     "unjail_validator",
     "send",
     "change_param",
-    "dao_transfer",
+    "dao_tranfer",
     "claim",
     "proof",
 ]

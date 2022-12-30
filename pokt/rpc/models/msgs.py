@@ -195,7 +195,7 @@ class MsgAppUnjail(Msg):
 
 
 class MsgDaoTransfer(Msg):
-    type_: Literal["gov/msg_dao_transfer"] = Field(alias="type")
+    type_: Literal["gov/msg_dao_tranfer"] = Field(alias="type")
     value: MsgDaoTransferVal
 
 
