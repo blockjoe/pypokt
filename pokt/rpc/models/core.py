@@ -28,6 +28,7 @@ CoinDenom = Literal["pokt", "upokt"]
 # https://github.com/pokt-network/pocket-core/blob/3c40b817a5358393b274728c6679b89720f65250/app/pocket.go#L198
 ModuleAccountPermissions = Literal["burning", "minting", "staking"]
 
+ChainID = Literal["mainnet", "testnet", "localnet"]
 
 class StakingStatus(int, Enum):
     unstaking = 1

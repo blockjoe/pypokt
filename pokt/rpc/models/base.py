@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+from collections import OrderedDict
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel
 
 from google.protobuf.any_pb2 import Any as ProtoAny
+from google.protobuf.json_format import ParseDict
 
 
 class Base(BaseModel):
@@ -94,9 +96,11 @@ class ProtobufBase(Base):
     __protobuf_model__: Any = None
     __protobuf_type_url__: Optional[str] = None
 
+    __amino_ordering__: tuple[Union[tuple[str, str], str], ...] = ()
+
     @classmethod
     def __proto_fields__(cls):
-        proto_fields = {}
+        proto_fields = OrderedDict()
         for name, val in cls.__fields__.items():
             proto_name = val.field_info.extra.get("proto_name", name)
             proto_type = val.field_info.extra.get("proto_type")
@@ -134,3 +138,13 @@ class ProtobufBase(Base):
                     )
                 )
         return msg
+
+    def amino_dict(self) -> OrderedDict:
+        d = OrderedDict()
+        for item in self.__amino_ordering__:
+            if isinstance(item, str):
+                d[item] = getattr(self, item)
+            else:
+                amino_name, attr_name = item
+                d[amino_name] = getattr(self, attr_name)
+        return d

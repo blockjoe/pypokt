@@ -72,6 +72,7 @@ from .core import (
     ACLKey,
     ApplicationOpts,
     BlockHeader,
+    ChainID,
     CoinDenom,
     FeeMultiplier,
     HashRange,

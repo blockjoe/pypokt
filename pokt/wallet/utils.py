@@ -11,6 +11,7 @@ from Crypto.Random import get_random_bytes
 from nacl.signing import SigningKey, VerifyKey
 from nacl.public import PrivateKey
 from nacl.exceptions import BadSignatureError
+from nacl.encoding import HexEncoder
 
 if TYPE_CHECKING:
     from .models import PPK
@@ -192,8 +193,30 @@ def sign_with_priv_key(priv_key: str, payload: bytes) -> bytes:
     Returns
     -------
     bytes
-        The signature concatenated with the original message.
+        The detatchced signature
     """
     sig_key = SigningKey(bytes.fromhex(priv_key[:64]))
-    signed = sig_key.sign(payload)
-    return signed.signature + signed.message
+    signed = sig_key.sign(payload, encoder=HexEncoder)
+    return signed.signature
+
+
+
+def sign_for_tx(priv_key: str, payload: bytes) -> tuple[str, bytes]:
+    """
+    Sign a given message with a private key for sending to the network
+
+    Parameters
+    ----------
+    priv_key: hex str
+        The private key to sign the message with.
+    payload:
+        The message to be signed.
+
+    Returns
+    -------
+    tuple[bytes, bytes]
+        The encoded pubkey and detatched signature
+    """
+    pubkey = priv_key[64:]
+    sig = sign_with_priv_key(priv_key, payload)
+    return (pubkey, sig)

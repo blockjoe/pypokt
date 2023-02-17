@@ -8,7 +8,10 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, SecretStr, validator
 
-from .utils import address_from_pubkey, create_new_ppk, priv_key_from_ppk
+from .utils import address_from_pubkey, create_new_ppk, priv_key_from_ppk, sign_for_tx
+
+from ..rpc.models.msgs import MsgSend, MsgSendVal
+from ..rpc.models import ChainID
 
 PKG_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 LOGO_PATH = os.path.join(PKG_DIR, "assets", "POKT_symbol_bg.png")
@@ -145,3 +148,8 @@ class UnlockedPPK(PPK):
     @property
     def private_key(self):
         return self.priv_key.get_secret_value()
+
+    def make_send_tx(self, to_address: str, amount: int, fee: int = 1000, memo: str ="", chain_id: ChainID = "mainnet") -> str:
+        value = MsgSendVal(from_address=self.address, to_address=to_address, amount=amount)
+        msg = MsgSend(type="pos/Send", value=value, fee=fee, memo=memo, chain_id=chain_id)
+        return msg.encode(*sign_for_tx(self.private_key, msg.std_sign_doc())).hex()

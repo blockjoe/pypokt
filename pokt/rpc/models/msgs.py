@@ -1,7 +1,12 @@
-from typing import Any, Literal, Optional, Union
+import random
+import json
+from typing import Any, Literal, Optional, OrderedDict, Union
+
+from pydantic import Field, root_validator
 
 from .base import Base, ProtobufBase, ProtobufTypes
 from .core import (
+    ChainID,
     CoinDenom,
     HashRange,
     MerkleProof,
@@ -17,10 +22,31 @@ from .gov_params import ParamKeys, ParamValueT
 
 import pokt.transactions.messages.proto.tx_signer_pb2 as proto
 
-from pydantic import Field
+
+
+class Coin(ProtobufBase):
+
+    __protobuf_model__ = proto.Coin
+
+    amount: Optional[str] = None
+    denom: Optional[CoinDenom] = "upokt"
+
+
+class Signature(ProtobufBase):
+
+    __protobuf_model__ = proto.ProtoStdSignature
+
+    pub_key: Optional[str] = Field(
+        None, proto_name="publicKey", proto_type=ProtobufTypes.BYTES
+    )
+    signature: Optional[str] = Field(
+        None, proto_name="Signature", proto_type=ProtobufTypes.BYTES
+    )
 
 
 class MsgSendVal(ProtobufBase):
+
+    __amino_ordering__ = ("amount", "from_address", "to_address")
     __protobuf_model__ = proto.MsgSend
     __protobuf_type_url__ = "/x.nodes.MsgSend"
 
@@ -31,6 +57,7 @@ class MsgSendVal(ProtobufBase):
         None, proto_name="ToAddress", proto_type=ProtobufTypes.BYTES
     )
     amount: Optional[int] = Field(None, proto_type=ProtobufTypes.STRING)
+
 
 
 class MsgAppStakeVal(ProtobufBase):
@@ -107,32 +134,32 @@ class MsgValidatorUnjailVal(ProtobufBase):
     )
 
 
-class MsgChangeParamVal(Base):
+class MsgChangeParamVal(ProtobufBase):
     address: Optional[str] = None
     param_key: Optional[ParamKeys] = None
     param_value: Optional[ParamValueT] = None
     # param: SingleParamT
 
 
-class MsgDaoTransferVal(Base):
+class MsgDaoTransferVal(ProtobufBase):
     from_address: Optional[str] = None
     to_address: Optional[str] = None
     amount: Optional[int] = None
     action: Optional[str] = None
 
 
-class MsgUpgradeVal(Base):
+class MsgUpgradeVal(ProtobufBase):
     address: Optional[str] = None
     upgrade: Optional[Upgrade] = None
 
 
-class MsgProofVal(Base):
+class MsgProofVal(ProtobufBase):
     merkle_proofs: Optional[MerkleProof] = None
     leaf: Optional[ProofT] = Field(None, discriminator="type_")
     evidence_type: Optional[int] = None  # EvidenceType = None
 
 
-class MsgClaimVal(Base):
+class MsgClaimVal(ProtobufBase):
     header: SessionHeader
     merkle_root: Optional[HashRange] = None
     total_proofs: Optional[int] = None
@@ -155,9 +182,64 @@ MsgValT = Union[
 ]
 
 
+class ProtoStdTx(ProtobufBase):
+
+    __protobuf_model__ = proto.ProtoStdTx
+
+    entropy: Optional[int] = Field(None, proto_type=ProtobufTypes.INT64)
+    fee: Optional[list[Coin]] = Field(
+        None, proto_type=ProtobufTypes.MESSAGE, proto_repeated=True
+    )
+    memo: Optional[str] = Field(None, proto_type=ProtobufTypes.STRING)
+    msg: Optional[Any] = Field(None, proto_type=ProtobufTypes.ANY)
+    signature: Optional[Signature] = Field(None, proto_type=ProtobufTypes.MESSAGE)
+
 class Msg(Base):
     type_: str = Field(..., alias="type")
-    value: Any
+    value: MsgValT
+
+    entropy: int = 0
+    chain_id: ChainID = "mainnet"
+    fee: int = 1000
+    feeDenom: Optional[CoinDenom] = "upokt"
+    memo: Optional[str] = ""
+
+
+    @root_validator(pre=True)
+    def random_entropy(cls, values):
+        values["entropy"] = random.randint(-(2**32 - 1), 2**32-1)
+        return values
+
+    def _fee(self):
+        d = OrderedDict()
+        d["fee"] = self.fee
+        d["denom"] = self.feeDenom
+        return [d]
+
+    def _proto_fee(self) -> list[Coin]:
+        return [Coin(amount=str(self.fee), denom=self.feeDenom)]
+
+    def _std_msg_obj(self):
+        d = OrderedDict()
+        d["type"] = self.type_
+        d["value"] = self.value.amino_dict()
+        return d
+
+    def std_sign_doc(self) -> bytes:
+        d = OrderedDict()
+        d["chain_id"] = self.chain_id
+        d["entropy"] = self.entropy
+        d["fee"] = self._fee()
+        d["memo"] = self.memo
+        d["msg"] = self._std_msg_obj()
+        return json.dumps(d, ensure_ascii=False).encode("utf-8")
+
+    def encode(self, pubkey: str, detached_signature: bytes) -> bytes:
+        sig = Signature(pub_key=pubkey, signature=detached_signature.decode("utf-8"))
+        stdTx = ProtoStdTx(msg=self.value, entropy=self.entropy, fee=self._proto_fee(), signature=sig, memo=self.memo)
+        stdTx_bytes = stdTx.protobuf_message().SerializeToString()
+        prefix = str(len(stdTx_bytes)).encode("utf-8")
+        return prefix + stdTx_bytes
 
 
 class MsgClaim(Msg):
@@ -188,7 +270,7 @@ class MsgValidatorUnjail(Msg):
 
 
 class MsgSend(Msg):
-    type_: Literal["pos/Send"] = Field(alias="type")
+    type_: Literal["pos/Send"] = Field("pos/Send", alias="type")
     value: MsgSendVal
 
 
@@ -238,25 +320,6 @@ MsgT = Union[
 ]
 
 
-class Coin(ProtobufBase):
-
-    __protobuf_model__ = proto.Coin
-
-    amount: Optional[str] = None
-    denom: Optional[CoinDenom] = "upokt"
-
-
-class Signature(ProtobufBase):
-
-    __protobuf_model__ = proto.ProtoStdSignature
-
-    pub_key: Optional[str] = Field(
-        None, proto_name="publicKey", proto_type=ProtobufTypes.BYTES
-    )
-    signature: Optional[str] = Field(
-        None, proto_name="Signature", proto_type=ProtobufTypes.BYTES
-    )
-
 
 class StdTx(Base):
 
@@ -267,17 +330,6 @@ class StdTx(Base):
     signature: Optional[Signature] = None
 
 
-class ProtoStdTx(ProtobufBase):
-
-    __protobuf_model__ = proto.ProtoStdTx
-
-    entropy: Optional[int] = Field(None, proto_type=ProtobufTypes.INT64)
-    fee: Optional[list[Coin]] = Field(
-        None, proto_type=ProtobufTypes.MESSAGE, proto_repeated=True
-    )
-    memo: Optional[str] = Field(None, proto_type=ProtobufTypes.STRING)
-    msg: Optional[MsgValT] = Field(None, proto_type=ProtobufTypes.ANY)
-    signature: Optional[Signature] = Field(None, proto_type=ProtobufTypes.MESSAGE)
 
 
 class UnconfirmedTransaction(Base):
