@@ -1,14 +1,18 @@
 from argparse import ArgumentParser
 import asyncio
+import datetime as dt
 from functools import partial
 from glob import iglob
 from multiprocessing import cpu_count, Manager, Pool
 import os
 import re
-import traceback
+import time
 from typing import Optional
 
 import aiohttp
+import humanize
+
+
 from pokt import PoktRPCDataProvider
 from pokt.index.ingest import ingest_block_range, QueueT
 from pokt.index.async_ingest import async_ingest_block_range
@@ -289,6 +293,7 @@ def main():
     for d in dirs:
         if not os.path.exists(d):
             os.makedirs(d)
+    time_start = time.time()
     start = get_last_indexed(headers, txs) if args.start is None else args.start
     end = get_latest_block(args.url) if args.end is None else args.end
     n_cores = cpu_count() - 4 if args.n_cores is None else args.n_cores
@@ -300,6 +305,12 @@ def main():
     )
     async_run_indexer(
         start + 1, end, args.url, headers, txs, msgs, args.batch_size, n_cores
+    )
+    print()
+    print(
+        "Index complete in {}".format(
+            humanize.naturaldelta(dt.timedelta(seconds=time.time() - time_start))
+        )
     )
 
 

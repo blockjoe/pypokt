@@ -15,6 +15,7 @@ TxResultMessageTypes = Literal[
     "send",
     "change_param",
     "dao_tranfer",
+    "upgrade",
     "claim",
     "proof",
 ]

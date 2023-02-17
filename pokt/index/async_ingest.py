@@ -39,16 +39,13 @@ async def async_ingest_txs_by_block(
     session: Optional[aiohttp.ClientSession] = None,
     page: int = 1,
     retries: int = 100,
-    txs: Optional[list[Transaction]] = None,
     progress_queue: Optional[QueueT] = None,
 ):
-    if txs is None:
-        txs = []
     try:
         block_txs = await async_get_block_transactions(
             rpc_url, height=block_no, per_page=1000, page=page, session=session
         )
-    except (PoktRPCError, PortalRPCError):
+    except (PoktRPCError, PortalRPCError, Exception):
         if progress_queue:
             progress_queue.put(("error", "txs", block_no, page))
         if retries < 0:
@@ -63,17 +60,20 @@ async def async_ingest_txs_by_block(
             session=session,
             page=page,
             retries=retries - 1,
-            txs=txs,
             progress_queue=progress_queue,
         )
-    while block_txs.txs:
-        yield block_txs.txs
+    while block_txs:
+        if block_txs.txs:
+            yield block_txs.txs
+        if block_txs.page_total is None or block_txs.txs is None:
+            yield None
+            break
         page += 1
         try:
             block_txs = await async_get_block_transactions(
                 rpc_url, height=block_no, per_page=1000, page=page, session=session
             )
-        except (PoktRPCError, PortalRPCError):
+        except (PoktRPCError, PortalRPCError, Exception):
             if progress_queue:
                 progress_queue.put(("error", "txs", block_no, page))
             if retries < 0:
@@ -88,7 +88,6 @@ async def async_ingest_txs_by_block(
                 session=session,
                 page=page,
                 retries=retries - 1,
-                txs=txs,
                 progress_queue=progress_queue,
             )
 
@@ -112,6 +111,11 @@ async def async_ingest_block_header(
         return await async_ingest_block_header(
             block_no, rpc_url, session=session, retries=retries - 1
         )
+    except Exception as e:
+        if progress_queue:
+            progress_queue.put(("error", "block", block_no))
+        raise (e)
+
     else:
         if block.block is None and retries > 0:
             return await async_ingest_block_header(
@@ -206,6 +210,8 @@ async def async_ingest_block(
         block_no, rpc_url, session, progress_queue=progress_queue
     ):
 
+        if tx_set is None:
+            continue
         flat_txs.extend([flatten_tx(tx) for tx in tx_set])
         flat_msgs = flatten_tx_messages(tx_set)
         for k, d in flat_msgs.items():
@@ -231,7 +237,7 @@ async def async_ingest_block_range(
     progress_queue: Optional[QueueT] = None,
 ) -> Optional[QueueT]:
     if session is None:  # Just pipe back into this with a session
-        async with aiohttp.ClientSession("http://httpbin.org") as session:
+        async with aiohttp.ClientSession(rpc_url) as session:
             return await async_ingest_block_range(
                 starting_block,
                 ending_block,

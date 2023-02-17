@@ -61,7 +61,10 @@ async def get_async(
 async def _post_ad_hoc(route: str, **data) -> dict:
     async with aiohttp.ClientSession(headers=DEFAULT_POST_HEADERS) as session:
         async with session.post(route, data=json.dumps(data)) as resp:
-            data = await resp.json()
+            try:
+                data = await resp.json()
+            except Exception:
+                raise PoktRPCError(400, "No json response was given")
             if isinstance(data, dict):
                 error_obj = data.get("error")
                 if error_obj:
@@ -83,13 +86,16 @@ async def post_async(
     async with session.post(
         route, data=json.dumps(data), headers=DEFAULT_POST_HEADERS
     ) as resp:
-        data = await resp.json()
-        if isinstance(data, dict):
-            error_obj = data.get("error")
+        try:
+            resp_data = await resp.json()
+        except Exception:
+            raise PoktRPCError(400, "No json response was given")
+        if isinstance(resp_data, dict):
+            error_obj = resp_data.get("error")
             if error_obj:
                 raise PortalRPCError(error_obj.get("code"), error_obj.get("message"))
 
-            error_code = data.get("code", None)
+            error_code = resp_data.get("code", None)
             if error_code:
-                raise PoktRPCError(error_code, data.get("message"))
-        return data
+                raise PoktRPCError(error_code, resp_data.get("message"))
+        return resp_data

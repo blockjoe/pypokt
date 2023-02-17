@@ -2,7 +2,7 @@ import os
 from typing import TypedDict, Optional, Union
 import pyarrow as pa
 
-from ..rpc.models import BlockHeader, Transaction
+from ..rpc.models import BlockHeader, Transaction, QueryDispatchResponse
 
 
 def camel_to_snake(s):
@@ -663,3 +663,34 @@ def schema_for_msg(module: str, type_: str) -> pa.schema:
             return dao_change_param_msg_schema
         elif type_ == "msg_dao_transfer":
             return dao_transfer_msg_schema
+
+
+session_schema = pa.schema(
+    [
+        pa.field("height", pa.int64()),
+        pa.field("chain", pa.string()),
+        pa.field("key", pa.string()),
+        pa.field("app_public_key", pa.string()),
+        pa.field("node_public_keys", pa.list_(pa.string())),
+    ]
+)
+
+
+class SessionRecord(TypedDict):
+    height: Optional[int]
+    chain: Optional[str]
+    key: Optional[str]
+    app_public_key: Optional[str]
+    node_public_keys: Optional[list[Optional[str]]]
+
+
+def flatten_session(session_response: QueryDispatchResponse) -> SessionRecord:
+    return {
+        "height": session_response.block_height,
+        "chain": session_response.session.header.chain,
+        "key": session_response.session.key,
+        "app_public_key": session_response.session.header.app_public_key,
+        "node_public_keys": [
+            node.public_key for node in session_response.session.nodes
+        ],
+    }
