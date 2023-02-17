@@ -30,6 +30,7 @@ ModuleAccountPermissions = Literal["burning", "minting", "staking"]
 
 ChainID = Literal["mainnet", "testnet", "localnet"]
 
+
 class StakingStatus(int, Enum):
     unstaking = 1
     staked = 2

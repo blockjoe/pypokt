@@ -46,7 +46,8 @@ class ProtobufTypes(int, Enum):
 
 
 def encode_proto_type(
-        value: Any, proto_type: Optional[ProtobufTypes] = None, repeats: bool = False):
+    value: Any, proto_type: Optional[ProtobufTypes] = None, repeats: bool = False
+):
     if repeats:
         return [encode_proto_type(item, proto_type) for item in value]
     if proto_type in (
@@ -76,7 +77,7 @@ def encode_proto_type(
         ProtobufTypes.INT64,
         ProtobufTypes.UINT64,
         ProtobufTypes.INT32,
-       ProtobufTypes.UINT32,
+        ProtobufTypes.UINT32,
         ProtobufTypes.SINT32,
         ProtobufTypes.SINT64,
     ):

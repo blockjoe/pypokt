@@ -23,7 +23,6 @@ from .gov_params import ParamKeys, ParamValueT
 import pokt.transactions.messages.proto.tx_signer_pb2 as proto
 
 
-
 class Coin(ProtobufBase):
 
     __protobuf_model__ = proto.Coin
@@ -59,14 +58,17 @@ class MsgSendVal(ProtobufBase):
     amount: Optional[int] = Field(None, proto_type=ProtobufTypes.STRING)
 
 
-
 class MsgAppStakeVal(ProtobufBase):
 
     __protobuf_model__ = proto.MsgProtoStake
     __protobuf_type_url__ = "/x.apps.MsgProtoStake"
 
-    pubkey: Optional[PublicKey] = Field(None, proto_name="pub_key", proto_type=ProtobufTypes.BYTES)
-    chains: Optional[list[str]] = Field(None, proto_type=ProtobufTypes.STRING, proto_repeated=True)
+    pubkey: Optional[PublicKey] = Field(
+        None, proto_name="pub_key", proto_type=ProtobufTypes.BYTES
+    )
+    chains: Optional[list[str]] = Field(
+        None, proto_type=ProtobufTypes.STRING, proto_repeated=True
+    )
     value: Optional[int] = Field(None, proto_type=ProtobufTypes.STRING)
 
 
@@ -75,7 +77,9 @@ class MsgBeginAppUnstakeVal(ProtobufBase):
     __protobuf_model__ = proto.MsgBeginUnstake
     __protobuf_type_url__ = "/x.apps.MsgBeginUnstake"
 
-    application_address: Optional[str] = Field(None, proto_name="Address", proto_type=ProtobufTypes.BYTES)
+    application_address: Optional[str] = Field(
+        None, proto_name="Address", proto_type=ProtobufTypes.BYTES
+    )
 
 
 class MsgAppUnjailVal(ProtobufBase):
@@ -194,6 +198,7 @@ class ProtoStdTx(ProtobufBase):
     msg: Optional[Any] = Field(None, proto_type=ProtobufTypes.ANY)
     signature: Optional[Signature] = Field(None, proto_type=ProtobufTypes.MESSAGE)
 
+
 class Msg(Base):
     type_: str = Field(..., alias="type")
     value: MsgValT
@@ -204,10 +209,9 @@ class Msg(Base):
     feeDenom: Optional[CoinDenom] = "upokt"
     memo: Optional[str] = ""
 
-
     @root_validator(pre=True)
     def random_entropy(cls, values):
-        values["entropy"] = random.randint(-(2**32 - 1), 2**32-1)
+        values["entropy"] = random.randint(-(2**32 - 1), 2**32 - 1)
         return values
 
     def _fee(self):
@@ -236,7 +240,13 @@ class Msg(Base):
 
     def encode(self, pubkey: str, detached_signature: bytes) -> bytes:
         sig = Signature(pub_key=pubkey, signature=detached_signature.decode("utf-8"))
-        stdTx = ProtoStdTx(msg=self.value, entropy=self.entropy, fee=self._proto_fee(), signature=sig, memo=self.memo)
+        stdTx = ProtoStdTx(
+            msg=self.value,
+            entropy=self.entropy,
+            fee=self._proto_fee(),
+            signature=sig,
+            memo=self.memo,
+        )
         stdTx_bytes = stdTx.protobuf_message().SerializeToString()
         prefix = str(len(stdTx_bytes)).encode("utf-8")
         return prefix + stdTx_bytes
@@ -320,7 +330,6 @@ MsgT = Union[
 ]
 
 
-
 class StdTx(Base):
 
     entropy: Optional[int] = None
@@ -328,8 +337,6 @@ class StdTx(Base):
     memo: Optional[str] = None
     msg: Optional[MsgT] = Field(None, discriminator="type_")
     signature: Optional[Signature] = None
-
-
 
 
 class UnconfirmedTransaction(Base):

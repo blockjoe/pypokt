@@ -200,7 +200,6 @@ def sign_with_priv_key(priv_key: str, payload: bytes) -> bytes:
     return signed.signature
 
 
-
 def sign_for_tx(priv_key: str, payload: bytes) -> tuple[str, bytes]:
     """
     Sign a given message with a private key for sending to the network
