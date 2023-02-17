@@ -62,7 +62,7 @@ def create_new_ppk(
 
     Returns
     -------
-    ppk: pokt.models.PPK
+    ppk: pokt.wallet.models.PPK
     """
     priv_key = PrivateKey.generate()
     priv_key_str = bytes(priv_key).hex() + bytes(priv_key.public_key).hex()
@@ -88,7 +88,7 @@ def ppk_from_priv_key(
 
     Returns
     -------
-    ppk: pokt.models.PPK
+    ppk: pokt.wallet.models.PPK
     """
     from .models import PPK, ImplementedKDFs
 
